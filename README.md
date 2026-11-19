@@ -6,24 +6,22 @@ Optimized ONNX Runtime deployment assets for Baidu's latest **PP-OCRv6** models,
 
 ## Directory Structure & Assets
 
-All deployment assets are structured by tier in `./output_models/`:
+The published repository assets focus on the ultra-compact, high-speed **INT8 Slim** variants optimized for mobile and edge inference:
 
 ```text
 output_models/
 ├── medium/
-│   ├── det_v6_medium.slim.onnx       (62.06 MB) - FP32 Detection (onnxslim)
 │   ├── det_v6_medium.slim.int8.onnx  (15.87 MB) - Dynamic INT8 Detection
-│   ├── rec_v6_medium.slim.onnx       (76.55 MB) - FP32 Recognition (onnxslim)
 │   ├── rec_v6_medium.slim.int8.onnx  (19.57 MB) - Dynamic INT8 Recognition (50 Languages)
 │   └── ppocrv6_dict.txt              ( 0.07 MB) - 50-language dictionary
 ├── small/
-│   ├── det_v6_small.slim.onnx        ( 9.92 MB) - FP32 Detection (onnxslim)
 │   ├── det_v6_small.slim.int8.onnx   ( 2.68 MB) - Dynamic INT8 Detection
-│   ├── rec_v6_small.slim.onnx        (21.15 MB) - FP32 Recognition (onnxslim)
 │   ├── rec_v6_small.slim.int8.onnx   ( 5.65 MB) - Dynamic INT8 Recognition (50 Languages)
 │   └── ppocrv6_dict.txt              ( 0.07 MB) - 50-language dictionary
 └── ppocrv6_dict.txt                  ( 0.07 MB) - Shared root dictionary
 ```
+
+*(Note: Unquantized FP32 intermediate models can be regenerated on-demand by running `python optimize_models.py`)*
 
 ---
 
@@ -123,7 +121,7 @@ import numpy as np
 import onnxruntime as ort
 
 # Load Detection Session
-det_session = ort.InferenceSession("output_models/medium/det_v6_medium.slim.onnx")
+det_session = ort.InferenceSession("output_models/medium/det_v6_medium.slim.int8.onnx")
 
 # Preprocessing: resize to multiples of 32 and ImageNet normalize
 img = cv2.imread("document.jpg")
@@ -149,9 +147,9 @@ bitmap = (prob_map > 0.3).astype(np.uint8)
 
 #### Recommended Pairings:
 1. **Balanced Production (Default)**:
-   - Detection: `output_models/medium/det_v6_medium.slim.onnx` (or `det_v6_medium.slim.int8.onnx`)
+   - Detection: `output_models/medium/det_v6_medium.slim.int8.onnx`
    - Recognition: `output_models/medium/rec_v6_medium.slim.int8.onnx`
-   - *Best for documents, invoices, receipts, and natural scene text.*
+   - *Best for documents, invoices, receipts, and natural scene text under 36 MB total.*
 2. **High-Speed / Viewfinder Scan**:
    - Detection: `output_models/small/det_v6_small.slim.int8.onnx`
    - Recognition: `output_models/small/rec_v6_small.slim.int8.onnx`

@@ -1,6 +1,7 @@
 import os
 import shutil
 import subprocess
+import sys
 from huggingface_hub import hf_hub_download
 from onnxruntime.quantization import QuantType, quantize_dynamic
 import requests
@@ -29,13 +30,18 @@ models_to_download = [
 
 raw_paths = {}
 for name, repo_id, subdir, _ in models_to_download:
-    print(f"Downloading {name} from {repo_id}...")
     dest_dir = os.path.join(RAW_DIR, subdir)
-    raw_paths[name] = hf_hub_download(
-        repo_id=repo_id,
-        filename="inference.onnx",
-        local_dir=dest_dir,
-    )
+    dest_path = os.path.join(dest_dir, "inference.onnx")
+    if os.path.exists(dest_path) and os.path.getsize(dest_path) > 0:
+        print(f"Model {name} already exists at {dest_path}, skipping download.")
+        raw_paths[name] = dest_path
+    else:
+        print(f"Downloading {name} from {repo_id}...")
+        raw_paths[name] = hf_hub_download(
+            repo_id=repo_id,
+            filename="inference.onnx",
+            local_dir=dest_dir,
+        )
 
 # Download PP-OCRv6 Dictionary (if not present)
 dict_dest = os.path.join(OUTPUT_DIR, "ppocrv6_dict.txt")
@@ -60,7 +66,7 @@ for name, _, _, out_dir in models_to_download:
     slim_dest = os.path.join(out_dir, f"{name}.slim.onnx")
     slim_paths[name] = slim_dest
     print(f"Slimming {name} -> {slim_dest}...")
-    subprocess.run(["onnxslim", raw_paths[name], slim_dest], check=True)
+    subprocess.run([sys.executable, "-m", "onnxslim", raw_paths[name], slim_dest], check=True)
     print(f"Simplified {name}: {slim_dest} ({os.path.getsize(slim_dest) / 1e6:.2f} MB)")
 
 print("\n=== 3. Running Dynamic INT8 Quantization ===")
