@@ -185,13 +185,53 @@ try options.setIntraOpNumThreads(4)
 let session = try ORTSession(env: env, modelPath: modelPath, sessionOptions: options)
 ```
 
-#### Flutter
-Use the [`onnxruntime`](https://pub.dev/packages/onnxruntime) Flutter package:
+#### Flutter (`flutter_onnxruntime`)
+Use the modern, actively maintained [`flutter_onnxruntime`](https://pub.dev/packages/flutter_onnxruntime) package:
+
+```yaml
+dependencies:
+  flutter_onnxruntime: ^1.9.0
+```
+
 ```dart
-final sessionOptions = OrtSessionOptions()
-  ..setIntraOpNumThreads(4)
-  ..setSessionGraphOptimizationLevel(GraphOptimizationLevel.ortEnableAll);
-final session = OrtSession.fromBuffer(modelUint8List, sessionOptions);
+import 'package:flutter_onnxruntime/flutter_onnxruntime.dart';
+
+Future<void> runOcrInference(List<double> normalizedPixels, int targetW) async {
+  final ort = OnnxRuntime();
+
+  // Create session from Flutter asset or local device file
+  final session = await ort.createSessionFromAsset(
+    'assets/models/rec_v6_medium.slim.int8.onnx',
+  );
+
+  // Prepare input tensor [1, 3, 48, targetW]
+  final inputName = session.inputNames.first;
+  final inputTensor = await OrtValue.fromList(
+    normalizedPixels,
+    [1, 3, 48, targetW],
+  );
+
+  try {
+    // Run inference
+    final outputs = await session.run({inputName: inputTensor});
+    final outputName = session.outputNames.first;
+    final outputTensor = outputs[outputName];
+
+    if (outputTensor != null) {
+      final results = await outputTensor.asList();
+      // Decode CTC tokens using ppocrv6_dict.txt
+    }
+
+    // Clean up native output tensors
+    for (final tensor in outputs.values) {
+      tensor.dispose();
+    }
+  } finally {
+    // Free native memory
+    inputTensor.dispose();
+    await session.close();
+  }
+}
 ```
 
 ---
